@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import normalizeIp from "../utils/normalizeIp";
 
 type RateLimitEntry = {
   const: number;
@@ -14,9 +15,12 @@ export function rateLimiter(options: RateLimitirOptions) {
   const store = new Map<string, RateLimitEntry>();
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.ip;
+    const key = normalizeIp(req);
     const now = Date.now();
 
+    if (store.has(key)) {
+      
+    }
     
 
     // const entry = store.get(ip);

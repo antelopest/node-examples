@@ -5,8 +5,8 @@ const app = express();
 
 app.use(
   rateLimiter({
-    windowMs: 60_000,
-    limit: 100
+    windowMs: 60_000, // Window Limit: 1 min
+    limit: 2 // Limit Request: 2
   })
 );
 
