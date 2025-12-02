@@ -9,7 +9,7 @@
 * После превышения лимита необходимо 429 Too Many Requests с заголовком Retry-After.
 * Написать тесты (jest).
 
-[Rate Limiter](./apps/001-rate-limiter-app/README.md)
+[Rate Limiter](./apps/001-rate-limiter-app/)
 
 ## 2. Реализация JWT Refresh Token Rotation + Blacklist
 
