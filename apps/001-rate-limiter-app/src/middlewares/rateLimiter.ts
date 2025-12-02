@@ -1,62 +1,69 @@
 import { Request, Response, NextFunction } from "express";
 import normalizeIp from "../utils/normalizeIp";
+import { RateLimiterOptions } from "../models/RateLimiterOptions";
+import { RateLimitEntry } from "../models/RateLimitEntry";
 
-type RateLimitEntry = {
-  const: number;
-  firstRequestAt: number; // timestamp
-}
-
-interface RateLimitirOptions {
-  windowMs: number;
-  limit: number;
-}
-
-export function rateLimiter(options: RateLimitirOptions) {
+export function rateLimiter(options: RateLimiterOptions) {
   const store = new Map<string, RateLimitEntry>();
 
   return (req: Request, res: Response, next: NextFunction) => {
     const key = normalizeIp(req);
     const now = Date.now();
 
-    if (store.has(key)) {
-      
+    if (!store.has(key)) {
+      store.set(
+        key,
+        {
+          count: 1,
+          firstRequestAt: now
+        }
+      );
+
+      req.rateLimit = {
+        limit: options.limit - 1,
+        resetAt: now + options.windowMs
+      }
+
+      return next();
     }
-    
 
-    // const entry = store.get(ip);
+    const { count, firstRequestAt }: RateLimitEntry = store.get(key)!;
 
-    // // If no entry — create one
-    // if (!entry) {
-    //   store.set(ip, { count: 1, firstRequestAt: now });
-    //   return next();
-    // }
+    // Check window
+    if (now - firstRequestAt > options.windowMs) {
+      store.set(key, { count: 1, firstRequestAt: now });
 
-    // const { count, firstRequestAt } = entry;
+      req.rateLimit = {
+        limit: options.limit - 1,
+        resetAt: now + options.windowMs
+      }
 
-    // // Check window expiration
-    // if (now - firstRequestAt > options.windowMs) {
-    //   // Reset window
-    //   store.set(ip, { count: 1, firstRequestAt: now });
-    //   return next();
-    // }
+      return next();
+    }
 
-    // // Window active ➜ check limit
-    // if (count + 1 > options.limit) {
-    //   const retryAfterSeconds = Math.ceil(
-    //     (options.windowMs - (now - firstRequestAt)) / 1000
-    //   );
+    // Check limit
+    if (count + 1 > options.limit) {
+      const retryAfterSeconds = Math.ceil(
+        (options.windowMs - (now - firstRequestAt)) / 1000
+      );
 
-    //   res.setHeader("Retry-After", retryAfterSeconds.toString());
-    //   return res.status(429).json({
-    //     message: "Too Many Requests",
-    //   });
-    // }
+      res.setHeader("Retry-After", retryAfterSeconds.toString());
 
-    // // Increase count
-    // store.set(ip, {
-    //   count: count + 1,
-    //   firstRequestAt,
-    // });
+      return res.status(429).json({
+        message: "Too Many Requests"
+      });
+    }
+
+    // count + 1
+    store.set(key, {
+      count: count + 1,
+      firstRequestAt
+    });
+
+    req.rateLimit = {
+      limit: options.limit - (count + 1),
+      resetAt: firstRequestAt + options.windowMs
+    }
 
     next();
   };
